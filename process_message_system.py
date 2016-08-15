@@ -3,26 +3,20 @@ import sys
 import pickle
 
 class MessageProc:
-	filename = None
+	filename = '/tmp/pipe'
 
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
 	def main(self):
-		print('main' + str(os.getpid()))
 		self.pid = os.getpid()
+		self.filename = '/tmp/pipe'
 		try:
-			os.mkfifo('/tmp/pipe'+ str(self.pid))
+			if not (os.path.exists('/tmp/pipe')):
+				os.mkfifo('/tmp/pipe')
 		except OSError:
 			print ('Could not create pipe')
-			pass
-		self.filename = '/tmp/pipe'+ str(self.pid)
-		print('created pipe ' + self.filename)
-		try:
-			pipe = open(self.filename, 'r')
-			pipe.close()
-		except:
-			print ('could not open file')		
+			pass		
 	
 	"""
 	Getter for filename
@@ -35,47 +29,44 @@ class MessageProc:
 	might need to pickle the data before adding it to file.
 	"""
 	def give(self, pid, label, *values): #sends message to given process
-		print('give for '+ str(pid))
 		filename = self.getfilename()
+		if(os.path.isfile(filename)): # Make new pipe if pipe doesn't exist
+			os.mkfifo(filename)
 		# write to file
-		print ('Opening file ' + filename)
 		pipe = open(filename, 'w')
 		pipe.write(str(label))
 		pipe.close()
-		print ('Successfully opened file ', filename)
 
 	"""
 	Starts a new copy of current process and returns its pid.	
 	"""
 	def start(self, *values): 
-		print('starting new child process')
 		newpid = os.fork()
 		if(newpid == 0):
 			self.main()
-			print ('printed from child')
-			return newpid
+			print('printed from child')
 		else :
 			print('printed from parent')
+			return os.getpid()
 		
 	"""
 	Recieves message from a given process. Reads the from pipe names pipe(pid)
 	"""	
 	def receive(self, *messages): # read from file
+		# print('Reading from ' + self.filename)
+		# for msg in messages:
+		#print(msg.getMessage())
 		# open pipe
-		print ('recieve')
-		with open(self.filename) as fifo:
-			while True:
-				line = fifo.read()
-				print (line)
-		pid = self.pid
-		print(str(pid))
+		# print('recieve')
+		fifo = open(self.filename, 'r')
+		for line in fifo:
+			print(line)
 		#for message in messages:
 			# process messages here
 			#print(message)
 
 
 	def closePipe(self, pid):
-		
 		filename = self.filename
 		try:
 			os.remove(filename)			
@@ -106,10 +97,8 @@ if __name__=='__main__':
 	print('parent pid: ' + str(os.getpid()))
 	pid = os.getpid()
 	msg = MessageProc()
-	msg.main()
-	msg.give(pid, 'sup')
+	msg.main()	
 	newpid = msg.start()
+	msg.give(pid, 'sup')
 	pid2 = os.getpid()
 	msg.closePipe(newpid)
-
-
