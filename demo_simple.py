@@ -21,4 +21,4 @@ if __name__=='__main__': # really do need this
     for num in range(10):
         me.give(consumer, 'data', num + 1)
     me.give(consumer, 'stop')
-    # me.closePipe()
+    me.closePipe()

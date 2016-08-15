@@ -1,6 +1,7 @@
 import os
 import sys
 import pickle
+import time
 
 class MessageProc:
 	filename = '/tmp/pipe'
@@ -36,10 +37,11 @@ class MessageProc:
 		pipe = open(filename, 'w')
 		if(len(values) != 0):
 			pipe.write(str(values[0]))  #pickle here
-		else:
-			if(label == 'stop'):
-				pipe.write('stop')
+		# else:
+		# 	if(label == 'stop'):
+		# 		pipe.write('stop')
 		pipe.close()
+		time.sleep(0.01)
 
 	"""
 	Starts a new copy of current process and returns its pid.	
@@ -56,13 +58,14 @@ class MessageProc:
 	"""	
 	def receive(self, *messages): # read from file
 		# Set up messages
-		for msg in messages:
-			print(msg.getMessage())
-
+		# for msg in messages:
+		# 	print(msg.getMessage())
 		fifo = open(self.filename, 'r')
 		for line in fifo:
 			if(line == 'stop'): # Change this
+				print('stop message')
 				fifo.close()
+				return
 			else:
 				print(line) # unpickle here
 		#for message in messages:
