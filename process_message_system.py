@@ -2,6 +2,7 @@ import os
 import sys
 import pickle
 import time
+import threading
 
 """
 Class for processing messaging between processes using named pipes.
@@ -38,16 +39,14 @@ class MessageProc:
 		# write to file
 		pipe = open(filename, 'wb')
 		if(len(values) != 0):
-			tup = (label, values[0]);
+			tup = (label, values);
 			pickle.dump(tup,pipe)
 			# pipe.write(str(values[0]))  #pickle here
 		else:
-			if(label == 'stop'):
-				# pipe.write('stop')
-				tup = ('stop',);
-				pickle.dump(tup, pipe)
+			tup = (label,);
+			pickle.dump(tup, pipe)
 		pipe.close()
-		time.sleep(0.01)
+		time.sleep(0.005)
 
 	"""
 	Starts a new copy of current process and returns its pid.	
@@ -72,17 +71,15 @@ class MessageProc:
 		while 1: # Reads pickle file until the EOF 
 			try:
 				input = pickle.load(fifo)
-				# loop through inputs and check if label matches any messageList objects' label
-				if(input[0] == 'stop'):
-					print('stop message')
-					fifo.close()
-				if(input[0] == 'data'):
-					print(input[1])
-					break
+				for msg in messageList:
+					if(input[0] == msg.getLabel()):
+						# do action for the msg here
+						# print('doing action ' + str(msg.getAction()))
+						msg.doAction(*input[1])
+						break
 			except:
 				break
 		
-
 
 	def closePipe(self):
 		filename = self.filename
@@ -98,15 +95,23 @@ class Message:
 	def __init__(self, message, action=None):
 		self.message = message
 		self.action = action
+		self.argcount = action.__code__.co_argcount
 		#action() # assuming no parameters for now, have to check for that later
 
 	def getAction(self):
 		return self.action
+	
+	def doAction(self, *args):
+		self.action(*args)
 
-	def getMessage(self):
+	def getLabel(self):
 		return self.message
 
 class Timeout:
+	def __init__(self, time, action=None):
+		self.time = time
+		self.action = action
+
 	def main(self, main_proc):
 		print('in timeout')
 
