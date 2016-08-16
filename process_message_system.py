@@ -3,12 +3,15 @@ import sys
 import pickle
 import time
 import threading
+from queue import Queue
 
 """
 Class for processing messaging between processes using named pipes.
 """
 class MessageProc:
 	filename = '/tmp/pipe'
+	arrived_condition = threading.Condition()
+	communication_queue = Queue()
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
@@ -20,13 +23,32 @@ class MessageProc:
 				os.mkfifo('/tmp/pipe')
 		except OSError:
 			print ('Could not create pipe')
-			pass		
+			pass
+		transfer_thread = threading.Thread(target=self.extract_from_pipe, daemon=True) #could set it to daemon
+		transfer_thread.start()		
 	
 	"""
 	Getter for filename
 	"""
 	def getfilename(self):
 		return self.filename
+
+
+	def extract_from_pipe(self): # Gets messages and puts them in a queue
+		''' Code from Robert's lecture'''
+		with open(self.filename, 'rb') as pipe:
+			while True:
+				try:
+					message = pickle.load(pipe)
+					with self.arrived_condition:
+						self.communication_queue.put(message)
+						self.arrived_condition.notify() # notify anything waiting
+				except EOFError:
+					time.sleep(0.01)
+
+	def wait(self):
+		with self.arrived_condition:
+			self.arrived_condition.wait() # wait until a new message
 
 	"""
 	Sends message to the pipe. Opens the pipe and writes message to it
@@ -71,15 +93,18 @@ class MessageProc:
 		while 1: # Reads pickle file until the EOF 
 			try:
 				input = pickle.load(fifo)
+				print(input)
 				for msg in messageList:
 					if(input[0] == msg.getLabel()):
 						# do action for the msg here
-						# print('doing action ' + str(msg.getAction()))
+						if(msgLabel() == 'stop'):
+							self.closePipe()
+							msg.doAction(*input[1])
 						msg.doAction(*input[1])
 						break
 			except:
 				break
-		
+		# notifyAll()
 
 	def closePipe(self):
 		filename = self.filename
