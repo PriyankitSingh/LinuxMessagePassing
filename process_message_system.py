@@ -3,6 +3,9 @@ import sys
 import pickle
 import time
 
+"""
+Class for processing messaging between processes using named pipes.
+"""
 class MessageProc:
 	filename = '/tmp/pipe'
 
@@ -29,13 +32,14 @@ class MessageProc:
 	Sends message to the pipe. Opens the pipe and writes message to it
 	might need to pickle the data before adding it to file.
 	"""
-	def give(self, pid, label, *values): #sends message to given process
+	def give(self, pid, label, *values):
 		filename = self.getfilename()
 		if(os.path.isfile(filename)): # Make new pipe if pipe doesn't exist
 			os.mkfifo(filename)
 		# write to file
 		pipe = open(filename, 'w')
 		if(len(values) != 0):
+			#pickle.dump(label,pipe)
 			pipe.write(str(values[0]))  #pickle here
 		# else:
 		# 	if(label == 'stop'):
@@ -62,15 +66,18 @@ class MessageProc:
 		# 	print(msg.getMessage())
 		fifo = open(self.filename, 'r')
 		for line in fifo:
-			if(line == 'stop'): # Change this
+			if(line == 'stop'): # Change this, not going in here
 				print('stop message')
 				fifo.close()
 				return
 			else:
 				print(line) # unpickle here
-		#for message in messages:
-			# process messages here
-			#print(message)
+				
+		# while 1: # Reads pickle file until the EOF 
+		# 	try:
+		# 		lists.append(pickle.load(fifo))
+		# 	except (EOFError, UnpicklingError):
+		# 		break
 		
 
 
