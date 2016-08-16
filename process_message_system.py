@@ -37,13 +37,16 @@ class MessageProc:
 		if(os.path.isfile(filename)): # Make new pipe if pipe doesn't exist
 			os.mkfifo(filename)
 		# write to file
-		pipe = open(filename, 'w')
+		pipe = open(filename, 'wb')
 		if(len(values) != 0):
-			# pickle.dump(label,pipe)
-			pipe.write(str(values[0]))  #pickle here
+			tup = (label, values[0]);
+			pickle.dump(tup,pipe)
+			# pipe.write(str(values[0]))  #pickle here
 		else:
 			if(label == 'stop'):
-				pipe.write('stop')
+				# pipe.write('stop')
+				tup = ('stop',);
+				pickle.dump(tup, pipe)
 		pipe.close()
 		time.sleep(0.01)
 
@@ -64,24 +67,27 @@ class MessageProc:
 		# Set up messages
 		# for msg in messages:
 		# 	print(msg.getMessage())
-		fifo = open(self.filename, 'r')
-		for line in fifo:
-			if(line == 'stop'): # Do not hard code this
-				print('stop message')
-				fifo.close()
-				return
-			else:
-				print(line) # unpickle here
+		fifo = open(self.filename, 'rb')
+		# for line in fifo:
+		# 	if(line == 'stop'): # Do not hard code this
+		# 		print('stop message')
+		# 		fifo.close()
+		# 		return
+		# 	else:
+		# 		print(line) # unpickle here
 				
-		# while 1: # Reads pickle file until the EOF 
-		# 	try:
-		# 		line = (pickle.load(fifo))
-		#		if(line == 'stop'):
-		#			print('stop message')
-		#			fifo.close()
-		#			break
-		# 	except (EOFError, UnpicklingError):
-		# 		break
+		while 1: # Reads pickle file until the EOF 
+			try:
+				input = pickle.load(fifo)
+				# print(input)
+				if(input[0] == 'stop'):
+					print('stop message')
+					fifo.close()
+				else:
+					print(input[1])
+					break
+			except:
+				break
 		
 
 
