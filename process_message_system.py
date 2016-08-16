@@ -3,6 +3,7 @@ import sys
 import pickle
 import time
 import threading
+import itertools
 from queue import Queue
 
 """
@@ -12,6 +13,7 @@ class MessageProc:
 	filename = '/tmp/pipe'
 	arrived_condition = threading.Condition()
 	communication_queue = Queue()
+	timeout = None
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
@@ -46,18 +48,18 @@ class MessageProc:
 				except EOFError:
 					time.sleep(0.01)
 
-	def wait(self):
-		with self.arrived_condition:
-			self.arrived_condition.wait() # wait until a new message
-
 	"""
 	Sends message to the pipe. Opens the pipe and writes message to it
 	might need to pickle the data before adding it to file.
 	"""
 	def give(self, pid, label, *values):
 		filename = self.getfilename()
-		if(os.path.isfile(filename)): # Make new pipe if pipe doesn't exist
-			os.mkfifo(filename)
+		if not (os.path.isfile(filename)): # Make new pipe if pipe doesn't exist
+			try:
+				os.mkfifo(filename)
+			except:
+				pass
+	
 		# write to file
 		pipe = open(filename, 'wb')
 		if(len(values) != 0):
@@ -86,25 +88,38 @@ class MessageProc:
 	def receive(self, *messages): # read from file
 		# Set up messages
 		messageList = []
-		for msg in messages:
-			messageList.append(msg)
-		fifo = open(self.filename, 'rb')
+		for msg in messages: # check if its a timeout of message
+			if(type(msg).__name__ == 'Message'):
+				print('message')
+			if(type(msg).__name__ == 'Timeout') and not (timeout == None):
+				self.timeout = msg
+
+
+		start_time = time.time()
+		end_time=time.time()
+		#while loop with return
+
+		# with self.arrived_condition:
+		# 	self.arrived_condition.wait() # wait until a new message
+		while True:
+			if not (self.communication_queue.qsize() == 0):
+				input = self.communication_queue.get()
 				
-		while 1: # Reads pickle file until the EOF 
-			try:
-				input = pickle.load(fifo)
-				print(input)
 				for msg in messageList:
 					if(input[0] == msg.getLabel()):
-						# do action for the msg here
-						if(msgLabel() == 'stop'):
+						# do action for the msg if label matches input
+						if(msg.getLabel() == 'stop'):
 							self.closePipe()
+							msg.doAction()
+							return
+						if(len(input) == 1):
+							msg.doAction()
+						else:
 							msg.doAction(*input[1])
-						msg.doAction(*input[1])
-						break
-			except:
-				break
-		# notifyAll()
+				self.communication_queue.task_done()	
+			else:
+				with self.arrived_condition:
+					self.arrived_condition.wait() # wait until a new message
 
 	def closePipe(self):
 		filename = self.filename
@@ -117,7 +132,7 @@ class MessageProc:
 
 
 class Message:
-	def __init__(self, message, action=None):
+	def __init__(self, message, action=None, guard=None):
 		self.message = message
 		self.action = action
 		self.argcount = action.__code__.co_argcount
