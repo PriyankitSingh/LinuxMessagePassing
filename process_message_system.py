@@ -8,7 +8,6 @@ Class for processing messaging between processes using named pipes.
 """
 class MessageProc:
 	filename = '/tmp/pipe'
-
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
@@ -65,25 +64,19 @@ class MessageProc:
 	"""	
 	def receive(self, *messages): # read from file
 		# Set up messages
-		# for msg in messages:
-		# 	print(msg.getMessage())
+		messageList = []
+		for msg in messages:
+			messageList.append(msg)
 		fifo = open(self.filename, 'rb')
-		# for line in fifo:
-		# 	if(line == 'stop'): # Do not hard code this
-		# 		print('stop message')
-		# 		fifo.close()
-		# 		return
-		# 	else:
-		# 		print(line) # unpickle here
 				
 		while 1: # Reads pickle file until the EOF 
 			try:
 				input = pickle.load(fifo)
-				# print(input)
+				# loop through inputs and check if label matches any messageList objects' label
 				if(input[0] == 'stop'):
 					print('stop message')
 					fifo.close()
-				else:
+				if(input[0] == 'data'):
 					print(input[1])
 					break
 			except:
