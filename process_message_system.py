@@ -6,6 +6,7 @@ import threading
 import itertools
 from queue import Queue
 
+ANY = 'any'
 """
 Class for processing messaging between processes using named pipes.
 """
@@ -14,6 +15,8 @@ class MessageProc:
 	arrived_condition = threading.Condition()
 	communication_queue = Queue()
 	timeout = None
+	anyFlag = False
+	anyMessage = None
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
@@ -35,9 +38,11 @@ class MessageProc:
 	def getfilename(self):
 		return self.filename
 
-
+	"""
+	Code from Robert's lecture.
+	"""
 	def extract_from_pipe(self): # Gets messages and puts them in a queue
-		''' Code from Robert's lecture'''
+		''' '''
 		with open(self.filename, 'rb') as pipe:
 			while True:
 				try:
@@ -90,11 +95,16 @@ class MessageProc:
 		messageList = []
 		for msg in messages: # check if its a timeout of message
 			if(type(msg).__name__ == 'Message'):
-				print('message')
-			if(type(msg).__name__ == 'Timeout') and not (timeout == None):
+				messageList.append(msg)
+				if(msg.getLabel() == 'any'):
+					self.anyFlag = True
+					self.anyMessage = msg
+			if(type(msg).__name__ == 'Timeout') and not (self.timeout == None):
 				self.timeout = msg
 
-
+		if(self.timeout == None):
+			self.timeout = Timeout(100000, action=lambda: None)
+		
 		start_time = time.time()
 		end_time=time.time()
 		#while loop with return
@@ -104,7 +114,7 @@ class MessageProc:
 		while True:
 			if not (self.communication_queue.qsize() == 0):
 				input = self.communication_queue.get()
-				
+				i = 1
 				for msg in messageList:
 					if(input[0] == msg.getLabel()):
 						# do action for the msg if label matches input
@@ -116,10 +126,16 @@ class MessageProc:
 							msg.doAction()
 						else:
 							msg.doAction(*input[1])
+
+					if(len(messageList) <= i) and (self.anyFlag):
+						self.anyMessage.doAction()
+					i=i+1
 				self.communication_queue.task_done()	
 			else:
 				with self.arrived_condition:
-					self.arrived_condition.wait() # wait until a new message
+					self.arrived_condition.wait(self.timeout.getTime()) # wait until a new message
+					if(self.communication_queue.qsize() == 0): # if queue is empty do timeout action
+						self.timeout.doAction() # add args
 
 	def closePipe(self):
 		filename = self.filename
@@ -136,6 +152,9 @@ class Message:
 		self.message = message
 		self.action = action
 		self.argcount = action.__code__.co_argcount
+		if(message == ANY):
+			self.message = 'any'
+		
 		#action() # assuming no parameters for now, have to check for that later
 
 	def getAction(self):
@@ -151,6 +170,12 @@ class Timeout:
 	def __init__(self, time, action=None):
 		self.time = time
 		self.action = action
+
+	def getTime(self):
+		return self.time
+
+	def doAction(self, *args):
+		self.action(*args)
 
 	def main(self, main_proc):
 		print('in timeout')
