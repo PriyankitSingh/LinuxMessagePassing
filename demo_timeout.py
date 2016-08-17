@@ -35,7 +35,7 @@ if __name__=='__main__':
 
     # then start the flush method
     me.give(flusher, 'start')
-
+    print('Start passed')
     time.sleep(1) # to give the flusher time to throw away existing messages
 
     me.give(flusher, 'last', ['this array', 1, 2, 3, 8])

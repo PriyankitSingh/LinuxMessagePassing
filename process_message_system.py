@@ -103,7 +103,7 @@ class MessageProc:
 				self.timeout = msg
 
 		if(self.timeout == None):
-			self.timeout = Timeout(100000, action=lambda: None)
+			self.timeout = TimeOut(100000, action=lambda: None)
 		
 		start_time = time.time()
 		end_time=time.time()
@@ -120,12 +120,14 @@ class MessageProc:
 						# do action for the msg if label matches input
 						if(msg.getLabel() == 'stop'):
 							self.closePipe()
-							msg.doAction()
-							return
+							return msg.doAction()
+							break
 						if(len(input) == 1):
-							msg.doAction()
+							return msg.doAction()
+							break
 						else:
-							msg.doAction(*input[1])
+							return msg.doAction(*input[1])
+							break
 
 					if(len(messageList) <= i) and (self.anyFlag):
 						self.anyMessage.doAction()
@@ -161,12 +163,12 @@ class Message:
 		return self.action
 	
 	def doAction(self, *args):
-		self.action(*args)
+		return self.action(*args)
 
 	def getLabel(self):
 		return self.message
 
-class Timeout:
+class TimeOut:
 	def __init__(self, time, action=None):
 		self.time = time
 		self.action = action
