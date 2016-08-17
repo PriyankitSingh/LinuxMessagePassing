@@ -75,7 +75,7 @@ class MessageProc:
 			tup = (label,);
 			pickle.dump(tup, pipe)
 		pipe.close()
-		time.sleep(0.005)
+		
 
 	"""
 	Starts a new copy of current process and returns its pid.	
@@ -84,6 +84,7 @@ class MessageProc:
 		newpid = os.fork()
 		if(newpid == 0):
 			self.main()
+			sys.exit() # Kill children after finished
 		else :
 			return os.getpid()
 		
