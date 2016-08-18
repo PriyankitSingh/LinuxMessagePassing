@@ -20,11 +20,11 @@ class MessageProc:
 	anyFlag = False
 	anyMessage = None
 	childPid = None
+	timeoutflag = False
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
 	def main(self):
-		self.pid = os.getpid()
 		self.filename = '/tmp/pipe' + str(os.getpid())
 		try:
 			if not (os.path.exists(self.filename)):
@@ -59,7 +59,6 @@ class MessageProc:
 
 	"""
 	Sends message to the pipe. Opens the pipe and writes message to it
-	might need to pickle the data before adding it to file.
 	"""
 	def give(self, pid, label, *values):
 		filename = '/tmp/pipe' + str(pid)
@@ -107,6 +106,7 @@ class MessageProc:
 					self.anyMessage = msg
 			if(type(msg).__name__ == 'Timeout') and not (self.timeout == None):
 				self.timeout = msg
+				self.timeoutflag = True
 
 		if(self.timeout == None):
 			self.timeout = TimeOut(100000, action=lambda: None)
@@ -136,7 +136,7 @@ class MessageProc:
 			else:
 				with self.arrived_condition:
 					self.arrived_condition.wait(self.timeout.getTime()) # wait until a new message
-					if(self.communication_queue.qsize() == 0): # if queue is empty do timeout action
+					if(self.communication_queue.qsize() == 0) and (timeoutflag) : # if queue is empty do timeout action
 						self.timeout.doAction() # add args
 
 		closePipe()
