@@ -87,10 +87,14 @@ class ServiceMatcher:
 					self.listOfProcesses.append(tup)
 					print(str(input[1]) + ' joined the service')
 				if(input[0] == 'request'):
+					i = 1
 					for proc in self.listOfProcesses:
 						name = proc[0]
 						if(name == input[1]):
 							self.give(input[2], proc[1])
+						if(i == len(self.listOfProcesses)):
+							
+						i++
 				self.communication_queue.task_done()
 			else:
 				with self.arrived_condition:

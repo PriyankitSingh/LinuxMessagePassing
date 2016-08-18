@@ -24,7 +24,7 @@ class MessageProc:
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
-	def main(self):
+	def main(self, *stuff):
 		self.filename = '/tmp/pipe' + str(os.getpid())
 		try:
 			if not (os.path.exists(self.filename)):
@@ -85,10 +85,8 @@ class MessageProc:
 	def start(self, *values): 
 		newpid = os.fork()
 		if(newpid == 0):
-			self.main()
+			self.main(*values)
 			sys.exit()
-			time.sleep(1)
-			# return
 		else :
 			# return os.getpid()
 			return newpid
@@ -116,7 +114,7 @@ class MessageProc:
 				input = self.communication_queue.get()
 				i = 1
 				for msg in messageList:
-					if(input[0] == msg.getLabel()):
+					if(input[0] == msg.getLabel()) and (msg.doGuardAction() == True):
 						# do action for the msg if label matches input
 						if(msg.getLabel() == 'stop'):
 							# self.closePipe()
@@ -125,8 +123,11 @@ class MessageProc:
 						if(len(input) == 1):
 							return msg.doAction()
 							break
-						else:
+						if(len(input) == 2):
 							return msg.doAction(*input[1])
+							break
+						if(len(input) == 3):
+							return msg.doAction(input[1], input[2])
 							break
 
 					if(len(messageList) <= i) and (self.anyFlag):
@@ -139,12 +140,11 @@ class MessageProc:
 					if(self.communication_queue.qsize() == 0) and (timeoutflag) : # if queue is empty do timeout action
 						self.timeout.doAction() # add args
 
-		closePipe()
 
 	def closePipe():
 		filename = '/tmp/pipe'+str(os.getpid())
 		try:
-			os.remove(filename)			
+			os.remove(filename)
 		except FileNotFoundError:
 			print('pipe not found in ' + str(os.getpid()))
 		else:
@@ -159,20 +159,21 @@ class MessageProc:
 
 
 class Message:
-	def __init__(self, message, action=None, guard=None):
+	def __init__(self, message, action=lambda:None, guard=lambda:True):
 		self.message = message
 		self.action = action
-		self.argcount = action.__code__.co_argcount
+		self.guard = guard
 		if(message == ANY):
 			self.message = 'any'
-		
-		#action() # assuming no parameters for now, have to check for that later
 
 	def getAction(self):
 		return self.action
 	
 	def doAction(self, *args):
 		return self.action(*args)
+
+	def doGuardAction(self):
+		return self.guard()
 
 	def getLabel(self):
 		return self.message
