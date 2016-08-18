@@ -5,6 +5,8 @@ import time
 import threading
 import itertools
 from queue import Queue
+import atexit
+
 
 ANY = 'any'
 """
@@ -17,20 +19,22 @@ class MessageProc:
 	timeout = None
 	anyFlag = False
 	anyMessage = None
+	childPid = None
 	"""
 	Creates a pipe names pipe(pid) and sets filename field
 	"""
 	def main(self):
 		self.pid = os.getpid()
-		self.filename = '/tmp/pipe'
+		self.filename = '/tmp/pipe' + str(os.getpid())
 		try:
-			if not (os.path.exists('/tmp/pipe')):
-				os.mkfifo('/tmp/pipe')
+			if not (os.path.exists(self.filename)):
+				os.mkfifo(self.filename)
 		except OSError:
 			print ('Could not create pipe')
 			pass
 		transfer_thread = threading.Thread(target=self.extract_from_pipe, daemon=True) #could set it to daemon
 		transfer_thread.start()		
+		return
 	
 	"""
 	Getter for filename
@@ -58,7 +62,7 @@ class MessageProc:
 	might need to pickle the data before adding it to file.
 	"""
 	def give(self, pid, label, *values):
-		filename = self.getfilename()
+		filename = '/tmp/pipe' + str(pid)
 		if not (os.path.isfile(filename)): # Make new pipe if pipe doesn't exist
 			try:
 				os.mkfifo(filename)
@@ -70,7 +74,6 @@ class MessageProc:
 		if(len(values) != 0):
 			tup = (label, values);
 			pickle.dump(tup,pipe)
-			# pipe.write(str(values[0]))  #pickle here
 		else:
 			tup = (label,);
 			pickle.dump(tup, pipe)
@@ -84,10 +87,12 @@ class MessageProc:
 		newpid = os.fork()
 		if(newpid == 0):
 			self.main()
-			sys.exit() # Kill children after finished
+			sys.exit()
+			time.sleep(1)
+			# return
 		else :
-			return os.getpid()
-		
+			# return os.getpid()
+			return newpid
 	"""
 	Recieves message from a given process. Reads the from pipe names pipe(pid)
 	"""	
@@ -105,13 +110,7 @@ class MessageProc:
 
 		if(self.timeout == None):
 			self.timeout = TimeOut(100000, action=lambda: None)
-		
-		start_time = time.time()
-		end_time=time.time()
-		#while loop with return
-
-		# with self.arrived_condition:
-		# 	self.arrived_condition.wait() # wait until a new message
+			
 		while True:
 			if not (self.communication_queue.qsize() == 0):
 				input = self.communication_queue.get()
@@ -120,7 +119,7 @@ class MessageProc:
 					if(input[0] == msg.getLabel()):
 						# do action for the msg if label matches input
 						if(msg.getLabel() == 'stop'):
-							self.closePipe()
+							# self.closePipe()
 							return msg.doAction()
 							break
 						if(len(input) == 1):
@@ -140,14 +139,23 @@ class MessageProc:
 					if(self.communication_queue.qsize() == 0): # if queue is empty do timeout action
 						self.timeout.doAction() # add args
 
-	def closePipe(self):
-		filename = self.filename
+		closePipe()
+
+	def closePipe():
+		filename = '/tmp/pipe'+str(os.getpid())
 		try:
 			os.remove(filename)			
 		except FileNotFoundError:
-			print('pipe not found')
+			print('pipe not found in ' + str(os.getpid()))
 		else:
-			print ('closed pipe')
+			print ('closed pipe for ' + str(os.getpid()))
+		try:
+			os.remove('/tmp/pipeNone')
+		except FileNotFoundError:
+			pass
+	
+	atexit.register(closePipe)
+
 
 
 class Message:
